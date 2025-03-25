@@ -1,0 +1,6 @@
+@Airbnb_Clone_App_HostAddress = http://localhost:5119
+
+GET {{Airbnb_Clone_App_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

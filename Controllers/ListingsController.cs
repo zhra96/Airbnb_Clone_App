@@ -21,99 +21,99 @@ namespace Airbnb_Clone_Api.Controllers
             _context = context;
         }
 
-        //  Get all listings (Guest & Host can access)
         [HttpGet]
         [AllowAnonymous] // Anyone can view listings
         public async Task<IActionResult> GetListings()
         {
-            var listings = await _context.Listings.Include(l => l.Host).ToListAsync();
+            var listings = await _context.Listings
+                .Include(l => l.Host)
+                .Select(l => new ListingDto
+                {
+                    ListingId = l.ListingId,
+                    Title = l.Title,
+                    Description = l.Description,
+                    Price = l.Price, // Auto-rounded via DTO
+                    Location = l.Location,
+                    Availability = l.Availability,
+                    Host = new UserDto
+                    {
+                        UserId = l.Host.UserId,
+                        FirstName = l.Host.FirstName,
+                        LastName = l.Host.LastName,
+                        Username = l.Host.Username,
+                        Email = l.Host.Email,
+                        UserType = l.Host.UserType
+                    }
+                })
+                .ToListAsync();
+
             return Ok(listings);
         }
+
 
         //  Create a new listing (Only Host can access)
         [HttpPost]
         [Authorize]
         public async Task<IActionResult> CreateListing([FromBody] Listing model)
         {
-            // Log the Authorization header to verify if it's present in the controller
-            //if (Request.Headers.TryGetValue("Authorization", out var authHeader))
-            //{
-            //    Console.WriteLine($"🛠 Authorization Header Received in Controller: {authHeader}");
-            //}
-            //else
-            //{
-            //    Console.WriteLine("❌ No Authorization Header Found in Controller!");
-            //}
-
-            //// 🔎 Debug: List all claims in User.Claims
-            //Console.WriteLine("🔎 Listing all claims in User.Claims:");
-            //foreach (var claim in User.Claims)
-            //{
-            //    Console.WriteLine($"➡ Claim Type: {claim.Type}, Value: {claim.Value}");
-            //}
-
             var userId = GetUserId();
             var userType = GetUserType();
-          
 
             if (userType != "Host")
             {
                 return Forbid(); // Guests cannot create listings
             }
 
-            // ✅ Fetch the Host (user) details from the database
-            var host = await _context.Users
-                .Where(u => u.UserId == userId)
-                .Select(u => new
-                {
-                    u.UserId,
-                    u.FirstName,
-                    u.LastName,
-                    u.Username,
-                    u.Email,
-                    u.UserType
-                })
-                .FirstOrDefaultAsync();
+            // ✅ Fetch the Host (user) details
+            var host = await _context.Users.FindAsync(userId);
+            if (host == null)
+            {
+                return NotFound(new { message = "Host not found." });
+            }
 
             var listing = new Listing
             {
-                HostId = userId, // ✅ Required field
+                HostId = userId,
                 Title = model.Title,
                 Description = model.Description,
                 Price = model.Price,
                 Location = model.Location,
-                Availability = model.Availability,
-                
+                Availability = model.Availability
             };
 
             _context.Listings.Add(listing);
             await _context.SaveChangesAsync();
 
-          
-
-            // ✅ Return the listing along with the host object
-            return CreatedAtAction(nameof(GetListings), new { id = listing.ListingId }, new
+            // ✅ Create a DTO to return
+            var listingDto = new ListingDto
             {
-                listing.ListingId,
-                listing.HostId,
-                listing.Title,
-                listing.Description,
-                listing.Price,
-                listing.Location,
-                listing.Availability,
-                Host = host // ✅ Includes host in response
-            });
-        }
+                ListingId = listing.ListingId,
+                Title = listing.Title,
+                Description = listing.Description,
+                Price = listing.Price, // Automatically rounded via DTO
+                Location = listing.Location,
+                Availability = listing.Availability,
+                Host = new UserDto
+                {
+                    UserId = host.UserId,
+                    FirstName = host.FirstName,
+                    LastName = host.LastName,
+                    Username = host.Username,
+                    Email = host.Email,
+                    UserType = host.UserType
+                }
+            };
 
+            return CreatedAtAction(nameof(GetListings), new { id = listing.ListingId }, listingDto);
+        }
 
         //  Update a listing (Only Host can access & must own the listing)
         [HttpPut("{id}")]
-        [Authorize] // User must be authenticated
+        [Authorize]
         public async Task<IActionResult> UpdateListing(int id, [FromBody] UpdateListingDto model)
         {
             var userId = GetUserId();
             var userType = GetUserType();
-
 
             if (userType != "Host")
             {
@@ -121,48 +121,52 @@ namespace Airbnb_Clone_Api.Controllers
             }
 
             var listing = await _context.Listings
-    .Include(l => l.Host) // ✅ Ensures Host data is loaded
-    .FirstOrDefaultAsync(l => l.ListingId == id);
+                .Include(l => l.Host) // ✅ Ensure Host data is loaded
+                .FirstOrDefaultAsync(l => l.ListingId == id);
 
             if (listing == null || listing.HostId != userId)
             {
                 return NotFound(new { message = "Listing not found or not owned by user" });
             }
 
-            // Apply updates only if values are provided
-
-            if (model.Title != null) listing.Title = model.Title;
-            if (model.Description != null) listing.Description = model.Description;
-
-            if (model.Location != null) listing.Location = model.Location;
-
-            if (model.Price is { } price) listing.Price = price;
-            if (model.Availability is { } availability) listing.Availability = availability;
+            // ✅ Apply updates only if values are provided
+            if (!string.IsNullOrEmpty(model.Title)) listing.Title = model.Title;
+            if (!string.IsNullOrEmpty(model.Description)) listing.Description = model.Description;
+            if (!string.IsNullOrEmpty(model.Location)) listing.Location = model.Location;
+            if (model.Price.HasValue) listing.Price = model.Price.Value;
+            if (model.Availability.HasValue) listing.Availability = model.Availability.Value;
 
             await _context.SaveChangesAsync();
+
+            // ✅ Create DTO response
+            var listingDto = new ListingDto
+            {
+                ListingId = listing.ListingId,
+                Title = listing.Title,
+                Description = listing.Description,
+                Price = listing.Price,
+                Location = listing.Location,
+                Availability = listing.Availability,
+                Host = listing.Host != null
+                    ? new UserDto
+                    {
+                        UserId = listing.Host.UserId,
+                        FirstName = listing.Host.FirstName,
+                        LastName = listing.Host.LastName,
+                        Username = listing.Host.Username,
+                        Email = listing.Host.Email,
+                        UserType = listing.Host.UserType
+                    }
+                    : null
+            };
+
             return Ok(new
             {
-                listing.ListingId,
-                listing.HostId,
-                listing.Title,
-                listing.Description,
-                listing.Price,
-                listing.Location,
-                listing.Availability,
-                Host = listing.Host != null
-        ? new UpdateUserDto
-        {
-            UserId = listing.Host.UserId,
-            FirstName = listing.Host.FirstName,
-            LastName = listing.Host.LastName,
-            Username = listing.Host.Username,
-            Email = listing.Host.Email,
-            UserType = listing.Host.UserType
-        }
-        : null
+                message = "Listing updated successfully",
+                listing = listingDto
             });
-
         }
+
 
         //  Delete a listing (Only Host can access & must own the listing)
         [HttpDelete("{id}")]

@@ -18,23 +18,32 @@ namespace Airbnb_Clone_Api.Data
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            base.OnModelCreating(modelBuilder);
             // You can configure entity relationships here if needed
             modelBuilder.Entity<Listing>()
                .HasOne(l => l.Host) // A Listing has one Host
                .WithMany() // A Host can have many Listings
                .HasForeignKey(l => l.HostId) // Foreign key in Listing table
                .OnDelete(DeleteBehavior.Cascade);
-        }
 
-        //public void Seed()
-        //{
-        //    if (!Users.Any()) // Avoid duplicate seeding
-        //    {
-        //        Users.Add(new User { Name = "TestUser", Email = "test@example.com", Role = "Host" });
-        //        SaveChanges();
-        //    }
-        //}
+            modelBuilder.Entity<Booking>()
+             .Property(b => b.Status)
+             .HasConversion<string>(); // ✅ Store enum as string instead of integer
+
+
+            modelBuilder.Entity<User>(entity =>
+            {
+                entity.Property(e => e.FirstName).HasColumnType("VARCHAR(100)");
+                entity.Property(e => e.LastName).HasColumnType("VARCHAR(100)");
+                entity.Property(e => e.Username).HasColumnType("VARCHAR(100)");
+                entity.Property(e => e.Email).HasColumnType("VARCHAR(255)");
+                entity.Property(e => e.PasswordHash).HasColumnType("TEXT");
+                entity.Property(e => e.UserType).HasColumnType("VARCHAR(50)");
+            });
+
+
+            base.OnModelCreating(modelBuilder);
+
+        }
 
 
     }

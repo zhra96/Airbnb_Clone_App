@@ -5,6 +5,8 @@ using Airbnb_Clone_Api.Models;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using Airbnb_Clone_App.Dtos;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 
 namespace Airbnb_Clone_Api.Controllers
 {
@@ -21,27 +23,28 @@ namespace Airbnb_Clone_Api.Controllers
 
         // GET: api/users
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<object>>> GetUsers()
+        public async Task<ActionResult<IEnumerable<UserDto>>> GetUsers()
         {
             var users = await _context.Users
-                .Select(user => new
+                .Select(user => new UserDto
                 {
-                    user.UserId,
-                    user.FirstName,
-                    user.LastName,
-                    user.Username,
-                    user.Email,
-                    user.UserType
+                    UserId = user.UserId,
+                    FirstName = user.FirstName,
+                    LastName = user.LastName,
+                    Username = user.Username,
+                    Email = user.Email,
+                    UserType = user.UserType
                 })
                 .ToListAsync();
 
-            if (users.Count == 0)
+            if (!users.Any())
             {
                 return NotFound(new { message = "No users found." });
             }
 
-            return users;
+            return Ok(users);
         }
+
 
         // GET: api/users/{id}
         [HttpGet("{id}")]
@@ -53,19 +56,25 @@ namespace Airbnb_Clone_Api.Controllers
                 return NotFound(new { message = "User not found." });
             }
 
-            return new
+            var userDto = new UserDto
             {
-                user.UserId,
-                user.FirstName,
-                user.LastName,
-                user.Username,
-                user.Email,
-                user.UserType
+                UserId = user.UserId,
+                FirstName = user.FirstName,
+                LastName = user.LastName,
+                Username = user.Username,
+                Email = user.Email,
+                UserType = user.UserType
             };
+
+            return Ok(new
+            {
+               
+                user = userDto
+            });
         }
 
-        // PUT: api/users/{id}
         [HttpPut("{id}")]
+        [Authorize] // Ensures only authenticated users can update profiles
         public async Task<IActionResult> UpdateUser(int id, UpdateUserDto updateDto)
         {
             var user = await _context.Users.FindAsync(id);
@@ -74,7 +83,16 @@ namespace Airbnb_Clone_Api.Controllers
                 return NotFound(new { message = "User not found." });
             }
 
-            // Only update fields that are provided in the request
+            var requestingUserId = int.Parse(User.FindFirst("UserId")?.Value ?? "0");
+            var requestingUserRole = User.FindFirst(ClaimTypes.Role)?.Value ?? "";
+
+            //  Ensure the user can only update their own details OR must be an admin
+            if (requestingUserId != id && requestingUserRole != "Admin")
+            {
+                return Forbid(); // 403 Forbidden
+            }
+
+            // Only update fields if provided
             if (!string.IsNullOrEmpty(updateDto.FirstName))
                 user.FirstName = updateDto.FirstName;
 
@@ -87,29 +105,30 @@ namespace Airbnb_Clone_Api.Controllers
             if (!string.IsNullOrEmpty(updateDto.Email))
                 user.Email = updateDto.Email;
 
-            if (!string.IsNullOrEmpty(updateDto.UserType))
+            // 🚨 Prevent role updates unless user is Admin
+            if (!string.IsNullOrEmpty(updateDto.UserType) && requestingUserRole == "Admin")
                 user.UserType = updateDto.UserType;
-
-            // Ensure password is not modified
-            _context.Entry(user).Property(x => x.PasswordHash).IsModified = false;
 
             await _context.SaveChangesAsync();
 
-            // Return the updated user object without PasswordHash
+            // ✅ Return updated user details using DTO
+            var userDto = new UserDto
+            {
+                UserId = user.UserId,
+                FirstName = user.FirstName,
+                LastName = user.LastName,
+                Username = user.Username,
+                Email = user.Email,
+                UserType = user.UserType
+            };
+
             return Ok(new
             {
-                message = "User updated successfully.",
-                user = new
-                {
-                    user.UserId,
-                    user.FirstName,
-                    user.LastName,
-                    user.Username,
-                    user.Email,
-                    user.UserType
-                }
+                message = "User updated successfully",
+                user = userDto
             });
         }
+
 
         // DELETE: api/users/{id}
         [HttpDelete("{id}")]

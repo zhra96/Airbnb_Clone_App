@@ -56,15 +56,6 @@ if (string.IsNullOrEmpty(secretKey))
 }
 
 
-//if (string.IsNullOrEmpty(secretKey))
-//{
-//    Console.WriteLine("ERROR: JWT Secret Key is missing or not loaded from appsettings.json!");
-//}
-//else
-//{
-//    Console.WriteLine($"Using JWT Secret Key: {secretKey}");
-//}
-
 // Add Authentication
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -115,13 +106,6 @@ builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-//if (app.Environment.IsDevelopment())
-//{
-//    app.UseSwagger();
-//    app.UseSwaggerUI();
-//}
-
 app.UseHttpsRedirection();
 
 //JWT Middleware should be before Authentication
@@ -134,10 +118,5 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
-//using (var scope = app.Services.CreateScope())
-//{
-//    var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-//    dbContext.Database.EnsureCreated(); // Ensures the DB exists
-//    dbContext.Seed(); // Call a method to add test data
-//}
+
 

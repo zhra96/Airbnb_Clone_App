@@ -8,7 +8,11 @@
         public DateTime CheckInDate { get; set; }
         public DateTime CheckOutDate { get; set; }
         public string Status { get; set; } // ✅ Return Status as string
-        
+
+        // ✅ Include Guest and Listing details
+        public UserDto? Guest { get; set; }
+        public ListingDto? Listing { get; set; }
     }
+
 }
 

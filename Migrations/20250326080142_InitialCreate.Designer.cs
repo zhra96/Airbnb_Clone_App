@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Airbnb_Clone_App.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20250324083033_InitialCreate")]
+    [Migration("20250326080142_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -169,27 +169,26 @@ namespace Airbnb_Clone_App.Migrations
 
                     b.Property<string>("Email")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasColumnType("VARCHAR(255)");
 
                     b.Property<string>("FirstName")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasColumnType("VARCHAR(100)");
 
                     b.Property<string>("LastName")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasColumnType("VARCHAR(100)");
 
                     b.Property<string>("PasswordHash")
-                        .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("UserType")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasColumnType("VARCHAR(50)");
 
                     b.Property<string>("Username")
                         .IsRequired()
-                        .HasColumnType("longtext");
+                        .HasColumnType("VARCHAR(100)");
 
                     b.HasKey("UserId");
 

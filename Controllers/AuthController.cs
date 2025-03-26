@@ -7,6 +7,7 @@ using Airbnb_Clone_Api.Models;
 using Airbnb_Clone_Api.Data;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Cryptography;
+using Airbnb_Clone_App.Dtos;
 
 namespace Airbnb_Clone_Api.Controllers
 {
@@ -59,18 +60,21 @@ namespace Airbnb_Clone_Api.Controllers
             _context.Users.Add(newUser);
             await _context.SaveChangesAsync();
 
+            // ✅ Return DTO instead of full User entity
+            var userDto = new UserDto
+            {
+                UserId = newUser.UserId,
+                FirstName = newUser.FirstName,
+                LastName = newUser.LastName,
+                Username = newUser.Username,
+                Email = newUser.Email,
+                UserType = newUser.UserType
+            };
+
             return Ok(new
             {
                 message = "User registered successfully",
-                user = new
-                {
-                    id = newUser.UserId,
-                    firstName = newUser.FirstName,
-                    lastName = newUser.LastName,
-                    username = newUser.Username,
-                    email = newUser.Email,
-                    userType = newUser.UserType
-                },
+                user = userDto
             });
         }
 
@@ -95,20 +99,20 @@ namespace Airbnb_Clone_Api.Controllers
                 SameSite = SameSiteMode.Strict, // Prevent CSRF attacks
                 Expires = DateTime.UtcNow.AddHours(1) // Token expiration
             });
-
+            var userDto = new UserDto
+            {
+                UserId = user.UserId,
+                FirstName = user.FirstName,
+                LastName = user.LastName,
+                Username = user.Username,
+                Email = user.Email,
+                UserType = user.UserType
+            };
             return Ok(new
             {
                 message = "Logged in successfully",
                 token,
-                user = new
-                {
-                    user.UserId,
-                    user.FirstName,
-                    user.LastName,
-                    user.Username,
-                    user.Email,
-                    user.UserType
-                }
+                user = userDto
             });
         }
 
@@ -141,7 +145,7 @@ namespace Airbnb_Clone_Api.Controllers
                 throw new InvalidOperationException("JWT configuration values are missing in appsettings.json");
             }
 
-            Console.WriteLine($"JWT Secret Key from appsettings.json: {secretKey}");
+            
 
             var key = Convert.FromBase64String(secretKey);
 
